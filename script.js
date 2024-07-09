@@ -1162,24 +1162,52 @@ class MapDisplay {
     drawBuilding = (x, y, b) => {
         var start = this.getPixelFromPos(x, y)
         var end = this.getPixelFromPos(x + 1, y + 1)
+        var len = {
+            x : end.x - start.x,
+            y : end.y - start.y
+        }
         let color = "#0000ff44"
-        if (b.id1 == 30 || b.id1 == 68 || b.id1 == 27 || b.id1 == 50)
-            color = "#964B0044"
-        else if (b.id1 == 31 || b.id1 == 69 || b.id1 == 28 || b.id1 == 51)
-            color = "#88888844"
-        else if (b.id1 == 32 || b.id1 == 70 || b.id1 == 29 || b.id1 == 52)
-            color = "#ffffff44"
+        let form = "default"
+        if (b.id1 == 30 || b.id1 == 68 || b.id1 == 27 || b.id1 == 50) {
+            color = "#964B00"
+            form = "wall"
+        }
+        else if (b.id1 == 31 || b.id1 == 69 || b.id1 == 28 || b.id1 == 51) {
+            color = "#888888"
+            form = "wall"
+        }
+        else if (b.id1 == 32 || b.id1 == 70 || b.id1 == 29 || b.id1 == 52) {
+            color = "#ffffff"
+            form = "wall"
+        }
         else if (b.id1 == 62 || b.id1 == 67 || b.id1 == 84 || b.id1 == 85 || b.id1 == 154 || b.id1 == 155)
+            color = "#ffff0022"
+        else if (b.id1 == 71) {
+            form = "circle"
             color = "#00ff0044"
-        else if (b.id1 == 71)
-            color = "#ffff0044"
+        }
         else if (b.id1 == 86)
             color = "#00000044"
-        else if (b.id1 == 97 || b.id1 == 98 || b.id1 == 99 || b.id1 == 111)
+        else if (b.id1 == 97 || b.id1 == 98 || b.id1 == 99 || b.id1 == 111) {
             color = "#ff000044"
-        else if (b.id1 >= 140 && b.id1 <= 159)
+            form = "circle"
+        }
+        else if (b.id1 >= 140 && b.id1 <= 159) {
             color = "#a020f044"
-        this.offscreenFloor.drawFillRect(start.x, start.y, end.x - start.x, end.y - start.y, color)
+            form = "circle"
+        }
+        if (form == "default")
+            this.offscreenFloor.drawFillRect(start.x, start.y, len.x, len.y, color)
+        else if (form == "wall") {
+            this.offscreenFloor.drawFillRect(start.x + len.x * 0.1, start.y + len.y * 0.1, len.x * 0.8, len.y * 0.8, color)
+        }
+        else if (form == "circle") {
+            let ctx = this.offscreenFloor.ctx
+            ctx.fillStyle = color
+            ctx.beginPath();
+            ctx.arc(start.x + len.x / 2, start.y + len.y / 2, len.x / 2.5, 0, 2 * Math.PI);
+            ctx.fill();
+        }
     }
 
     clickOnMap = (x, y) => {
@@ -1345,7 +1373,7 @@ mainMenuGui = (gameUI) => {
 let replaceMapInput = {
     Aid1 : 0,
     Aid2 : undefined,
-    Bid1 : undefined,
+    Bid1 : -1,
     Bid2 : undefined
 }
 
@@ -1359,9 +1387,9 @@ replaceMenuGui = () => {
     let aid2txt = replaceMapInput.Aid2 == undefined ? "None" : replaceMapInput.Aid2
     gameUI.addButton("Id2 : " + aid2txt, 15, '#000000', "#ffffff", "#000000", () => {replaceMapInput.Aid2 = InputFromRange(-9999, 9999, "enter building id1 (negative value if no second id)", replaceMapInput.Aid1); replaceMapInput.Aid2 = (replaceMapInput.Aid2 < 0) ? undefined : replaceMapInput.Aid2}, undefined, "serif")
     gameUI.addTextZone("...to building type : ", 25, 9999, "black", "serif")
-    let bid1txt = replaceMapInput.Bid1 == undefined ? "just delete" : "Id1 : " + replaceMapInput.Bid1
+    let bid1txt = replaceMapInput.Bid1 == -1 ? "just delete" : "Id1 : " + replaceMapInput.Bid1
     gameUI.addButton(bid1txt, 15, '#000000', "#ffffff", "#000000", () => {replaceMapInput.Bid1 = InputFromRange(-9999, 9999, "enter building id1 (negative value for no replacement)", replaceMapInput.Bid1)}, undefined, "serif")
-    if (replaceMapInput.Bid1 != undefined) {
+    if (replaceMapInput.Bid1 != -1) {
         let bid2txt = replaceMapInput.Bid2 == undefined ? "None" : replaceMapInput.Bid2
         gameUI.addButton(bid2txt, 15, '#000000', "#ffffff", "#000000", () => {replaceMapInput.Bid2 = InputFromRange(-9999, 9999, "enter building id2 (negative value if no second id)", replaceMapInput.Bid2); replaceMapInput.Bid2 = (replaceMapInput.Bid2 < 0) ? undefined : replaceMapInput.Bid2}, undefined, "serif")
     }
@@ -1742,10 +1770,21 @@ myControlFunction = (event) =>  {
             }
         }
     }
+    if (event.type == "wheel") {
+        if (event.deltaY > 0) {
+            myMapDisplay.camera.zoom *= 1.05
+            myMapDisplay.offscreenFloor.needRedraw = true
+        }
+        else if (event.deltaY < 0) {
+            myMapDisplay.camera.zoom *= 0.95
+            myMapDisplay.offscreenFloor.needRedraw = true
+        }
+    }
 }
 
 
 var myMapDisplay = undefined
+var myControllersManager = undefined
 
 window.onload = () => {
     myScreen = new MyScreen() //display on the main canvas
