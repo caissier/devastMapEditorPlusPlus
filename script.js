@@ -1,460 +1,37 @@
 
-MYUI_WINDOWINFO_MOUSETIME = 400
-MYUI_LETTER_SIZE = 20
-MYUI_FONT = "'Footlight MT Light'"
-
-isInRect = (x, y, rect) => {
-    if (x === undefined || y === undefined
-            || rect.ax === undefined || rect.ay === undefined
-            || rect.bx === undefined || rect.by === undefined)
-        return (false)
-
-    if (x > rect.ax && x < rect.ax + rect.bx
-            && y > rect.ay && y < rect.ay + rect.by)
-        return (true)
-    return (false)
-}
-
-class MyUI { 
-    constructor(uiManager, canvas, x, y, lenx, scale, background, stroke, marge) {
-        this.uiManager = uiManager
-        this.x = x
-        this.y = y
-        this.canvas = canvas
-        this.marge = marge >= 0 ? marge : 5
-        this.lenx = lenx + 2 * this.marge
-        this.leny = this.marge
-        this.elmList = []
-        this.scale = scale
-        this.background = background ? background : undefined
-        this.stroke = stroke ? stroke : undefined
-        this.buttonList = []
-
-        this.InfoWindowPos = false
+class myGUI {
+    constructor(id, guiClass, parent) {
+        this.uiContainer = document.createElement('div');
+        if (guiClass)
+            this.uiContainer.className = guiClass
+        this.uiContainer.id = id;
+        parent.appendChild(this.uiContainer);
     }
 
-
-    addTextZone = (txt, letter_size, letter_per_line, text_color, text_font) => {
-        this.canvas.ctx.font = "" + letter_size + "px " + text_font
-        var txts = []
-        while (txt.length > 0) {
-            var cutlen = 0
-            while (txt[cutlen] == '\n')
-                cutlen++
-            while (txt[cutlen] != '\n' && cutlen < txt.length && cutlen < letter_per_line)
-                cutlen++;
-            if (cutlen == letter_per_line)
-                while (txt[cutlen] != ' ' && cutlen > 0)
-                    cutlen--
-            cutlen = cutlen > 0 ? cutlen : letter_per_line
-            var line = "" + txt.substring(0, cutlen)
-            while (txt[cutlen + 1] == '\n')
-                cutlen++
-            txt = txt.substring(cutlen)
-            txts.push(line)
-            var txt_size = this.canvas.ctx.measureText(line)
-            if (this.lenx < txt_size.width + 2 * this.marge)
-                this.lenx = txt_size.width + 2 * this.marge
-            this.leny += (letter_size + this.marge) 
-        }
-        this.elmList.push({
-            type : "text",
-            txts : txts,
-            letter_size : Math.floor(letter_size),
-            txt_color : text_color,
-            text_font : text_font
-        })
+    modifyCSS(name, value) {
+        this.uiContainer.style[name] = value
     }
 
-    addGauge = (txt, fullness, lenx, leny, letter_size, colorFill, colorStroke, colorText, text_font) => {
-        text_font = text_font ? text_font : "Arial"
-        this.canvas.ctx.font = "" + letter_size + "px " + text_font
-        var txt_size = this.canvas.ctx.measureText(txt)
-        if (txt_size > lenx + 2 * this.marge)
-            lenx = txt_size + 2 * this.marge
-        if (this.lenx < lenx + 2 * this.marge)
-            this.lenx = lenx + 2 * this.marge
-        if (leny < letter_size + 2 * this.marge)
-            leny = letter_size + 2 * this.marge
-        this.elmList.push({
-            type : "gauge",
-            txt : txt,
-            fullness : fullness,
-            lenx : lenx,
-            leny : leny,
-            letter_size : letter_size,
-            colorFill : colorFill,
-            colorStroke : colorStroke,
-            colorText : colorText,
-            text_font : text_font,
-        })
-        this.leny += leny + 2 * this.marge
+    addElement(elementType, id, param, eventsOnElement) {
+        const element = document.createElement(elementType);
+        element.id = id;
+        for (var z in param)
+            element[z] = param[z]
+        for (var z in eventsOnElement) {
+            let e = eventsOnElement[z]
+            element.addEventListener(e.eventType, e.functionOnEvent)
+        }
+        this.uiContainer.appendChild(element);
+        return element
     }
 
-    addButton = (txt, letter_size, text_color, fillColor, strokeColor, callback, callback_data, text_font, key_event, windowInfo, mouseLight) => {
-        this.canvas.ctx.font = "" + letter_size + "px " + text_font
-        txt = key_event ? key_event + " - " + txt : txt
-        var txt_size = this.canvas.ctx.measureText(txt)
-        if (txt_size.width + 4 * this.marge > this.lenx)
-            this.lenx = txt_size.width + 4 * this.marge
-        this.elmList.push({
-            type : "button",
-            txt_size : txt_size,
-            letter_size : letter_size,
-            text_color : text_color,
-            fillColor : fillColor,
-            strokeColor : strokeColor,
-            callback : callback,
-            callback_data : callback_data,
-            text_font : text_font,
-            key_event : key_event,
-            txt : txt,
-            windowInfo : windowInfo,
-            mouseLight : mouseLight
-        })
-        this.leny += Math.floor(3 * this.marge + letter_size)
-    }
-
-    addHorizontalElem = (list) => {
-        // list  all the elemnt on the verctial
-        var elmUI = {
-            type : "horizontal",
-            list : []
-        }
-        var max_len_y = 0;
-        var len_x = this.marge
-        for (var z in list) {
-            var e = list[z]
-            var elmHoriz = undefined
-            switch (e.type) {
-                case undefined :
-                    continue
-                case "txt" :
-                    if (!e.txt)
-                        continue
-                    var txt = e.txt
-                    var txts = []
-                    var txt_leny = 0
-                    var txt_lenx = 0
-                    var letter_per_line = e.letter_per_line ? e.letter_per_line : 9999
-                    this.canvas.ctx.font = "" + e.letter_size + "px" + e.txt_font
-                    while (txt.length > 0) {
-                        var cutlen = 0
-                        while (txt[cutlen] == '\n')
-                            cutlen++
-                        while (txt[cutlen] != '\n' && cutlen < txt.length && cutlen < letter_per_line)
-                            cutlen++;
-                        if (cutlen == letter_per_line)
-                            while (txt[cutlen] != ' ' && cutlen > 0)
-                                cutlen--
-                        cutlen = cutlen > 0 ? cutlen : letter_per_line
-                        var line = "" + txt.substring(0, cutlen)
-                        while (txt[cutlen + 1] == '\n')
-                            cutlen++
-                        txt = txt.substring(cutlen)
-                        txts.push(line)
-                        var txt_size = this.canvas.ctx.measureText(line)
-                        if (txt_lenx < txt_size.width + 2 * this.marge)
-                            txt_lenx = txt_size.width + 2 * this.marge
-                        txt_leny += (e.letter_size + this.marge) 
-                    }
-                    max_len_y = txt_leny > max_len_y ? txt_leny : max_len_y  
-                    elmHoriz = {
-                        type : "txt",
-                        txts : txts,
-                        txt_color : e.txt_color ? e.txt_color : "#000000",
-                        max_letters : e.max_letter ? e.max_letter : 9999,
-                        letter_size : e.letter_size ? e.letter_size : 20,
-                        txt_font : e.txt_font ? e.txt_font : "Arial",
-                        txt_size : txt_lenx,
-                    }
-                    
-                    len_x += txt_lenx
-                    //
-                    //var txt_size = this.canvas.ctx.measureText(elmHoriz.txt).width
-                    //elmHoriz.txt_size = txt_size
-                    //max_len_y = elmHoriz.letter_size > max_len_y ? elmHoriz.letter_size : max_len_y
-                    //len_x += elmHoriz.txt_size + this.marge
-                    break
-            
-                case "img" :
-                    if (!e.img)
-                        continue
-                    elmHoriz = {
-                        type : "img",
-                        img : e.img,
-                        len_x : e.len_x ? e.len_x : 50,
-                        len_y : e.len_y ? e.len_y : 50
-                    }
-                    max_len_y = elmHoriz.len_y > max_len_y ? elmHoriz.len_y : max_len_y
-                    len_x += elmHoriz.len_x + this.marge
-                    break
-                case "button" :
-                    if (!e.callback || !e.txt)
-                        continue
-                    var letter_size = e.letter_size ? e.letter_size : 20
-                    var txt_font = e.txt_font? e.txt_font : "Arial"
-                    this.canvas.ctx.font = "" + letter_size + "px " + txt_font
-                    var txt = e.key_event ? e.key_event + " - " + e.txt : e.txt
-                    var txt_size = this.canvas.ctx.measureText(txt)
-                    elmHoriz = {
-                        type : "button",
-                        txt_size : txt_size.width,
-                        letter_size : letter_size,
-                        txt_color : e.txt_color ? e.txt_color : '#000000',
-                        fillColor : e.fillColor ? e.fillColor : "#ffffff",
-                        strokeColor : e.strokeColor ? e.strokeColor : '#000000',
-                        callback : e.callback,
-                        callback_data : e.callback_data,
-                        txt_font : txt_font,
-                        key_event : e.key_event,
-                        txt : txt,
-                        windowInfo: e.windowInfo,
-                        mouseLight : e.mouseLight
-                    }
-                    max_len_y = elmHoriz.letter_size + 2 * this.marge > max_len_y ? elmHoriz.letter_size + 2 * this.marge : max_len_y
-                    len_x += txt_size.width + this.marge * 3
-                    break
-            }
-            elmUI.list.push(elmHoriz)
-        }
-        if (this.lenx < len_x)
-            this.lenx = len_x
-        elmUI.len_y = max_len_y
-        this.elmList.push(elmUI)
-        this.leny += Math.floor(this.marge + max_len_y)
-    }
-
-    addImage = (img, lenx, leny) => {
-        this.elmList.push({
-            type : "img",
-            img : img,
-            lenx : lenx,
-            leny : leny
-        })
-        if (this.lenx < lenx + 2 * this.marge)
-            this.lenx = lenx + 2 * this.marge
-        this.leny += Math.floor(this.marge + lenx)
-    }
-
-    drawUI = () => {
-        if (this.background) {
-            this.canvas.ctx.fillStyle = this.background
-            this.canvas.drawFillRect(this.x, this.y, this.x + this.lenx, this.y + this.leny)
-        }
-        if (this.stroke) {
-            this.canvas.ctx.strokeStyle = this.stroke
-            this.canvas.drawRect(this.x, this.y, this.x + this.lenx, this.y + this.leny)
-        }
-        var py = this.y + this.marge
-        for (var z in this.elmList) {
-            var zone = this.elmList[z]
-            switch (zone.type) {
-                case "text": 
-                    for (var i in zone.txts) {
-                        this.canvas.drawTextTopLeft(zone.txts[i], this.x + this.marge, py, this.lenx - 2 * this.marge, zone.letter_size, zone.txt_color, zone.text_font)
-                        py += zone.letter_size + this.marge
-                    }
-                    break
-                case "button":
-                    this.canvas.ctx.font = "" + zone.letter_size + "px " + zone.text_font
-                    //this.canvas.ctx.textAlign = 'center';
-                    //this.canvas.ctx.textBaseline = "middle"
-                    var center_x = Math.floor(this.x + zone.txt_size.width / 2 + 2 * this.marge)
-                    var center_y = Math.floor(py + zone.letter_size / 2 + 1 * this.marge)
-                    var bRect = {
-                        ax : Math.floor(center_x - zone.txt_size.width / 2 - this.marge),
-                        ay : Math.floor(center_y - zone.letter_size / 2 - this.marge),
-                        bx : Math.floor(zone.txt_size.width + 2 * this.marge),
-                        by : Math.floor(zone.letter_size + 2 * this.marge),
-                    }
-                    
-                    this.canvas.ctx.fillStyle = zone.fillColor
-                    if (zone.mouseLight && this.uiManager.controler.mousePos && this.uiManager.controler.mousePos.x !== undefined && isInRect(this.uiManager.controler.mousePos.x, this.uiManager.controler.mousePos.y, bRect))
-                        this.canvas.ctx.fillStyle = zone.fillColor.substring(0, 7) + zone.mouseLight
-                    this.canvas.drawFillRect(bRect.ax, bRect.ay, bRect.bx, bRect.by)
-                    this.canvas.ctx.strokeStyle = zone.strokeColor
-                    this.canvas.drawRect(bRect.ax, bRect.ay, bRect.bx, bRect.by)
-                    this.canvas.drawTextTopLeft(zone.txt, bRect.ax + this.marge, bRect.ay + this.marge, 9999, zone.letter_size, zone.text_color, zone.text_font)
-                    this.buttonList.push({
-                        rect : bRect,
-                        callback : zone.callback,
-                        callback_data : zone.callback_data,
-                        key_event : zone.key_event,
-                        windowInfo : zone.windowInfo
-                    })
-                    py += zone.letter_size + this.marge * 3
-                    break;
-                case ("img"):
-                    this.canvas.ctx.drawImage(zone.img.img, this.x + this.marge, py + this.marge, zone.lenx, zone.leny)
-                    py += zone.leny + this.marge
-                    break
-                case ("gauge"):
-                    this.canvas.ctx.fillStyle = zone.colorFill
-                    this.canvas.drawFillRect(this.x + this.marge, py + this.marge, zone.lenx, zone.leny)
-                    this.canvas.ctx.fillStyle = zone.colorStroke
-                    if (zone.fullness > 0)
-                        this.canvas.drawFillRect(this.x + this.marge * 2, py + this.marge * 2, Math.floor(zone.lenx * zone.fullness - this.marge), zone.leny - this.marge * 2)
-                    this.canvas.drawTextCenter(zone.txt, this.x + this.marge + zone.lenx / 2, py + this.marge + zone.leny / 2, zone.lenx, zone.letter_size, zone.colorText, zone.text_font)
-                    py += zone.leny + 2 * this.marge
-                    break
-                case ("horizontal"):
-                    var horizX = this.marge
-                    for (var e in zone.list) {
-                        var elmH = zone.list[e]
-                        switch (elmH.type) {
-                            case "txt": 
-                                var ppy = py
-                                for (var z in elmH.txts) {
-                                    this.canvas.drawTextTopLeft(elmH.txts[z], this.x + horizX, ppy, elmH.txt_size, elmH.letter_size, elmH.txt_color, elmH.txt_font)
-                                    ppy += elmH.letter_size + this.marge
-                                }
-                                horizX += this.marge + elmH.txt_size
-                                break
-                            case "button":
-                                this.canvas.ctx.font = "" + elmH.letter_size + "px" + elmH.txt_font
-                                var center_x = Math.floor(this.x + horizX + elmH.txt_size / 2 + this.marge / 2)
-                                var center_y = Math.floor(py + elmH.letter_size / 2 + this.marge / 2)
-                                var bRect = {
-                                    ax : Math.floor(center_x - elmH.txt_size / 2 - this.marge),
-                                    ay : Math.floor(center_y - elmH.letter_size / 2 - this.marge),
-                                    bx : Math.floor(elmH.txt_size + this.marge * 2),
-                                    by : Math.floor(elmH.letter_size + this.marge * 2),
-                                }
-                                this.canvas.ctx.fillStyle = elmH.fillColor
-                                if (elmH.mouseLight && this.uiManager.controler.mousePos && this.uiManager.controler.mousePos.x !== undefined && isInRect(this.uiManager.controler.mousePos.x, this.uiManager.controler.mousePos.y, bRect))
-                                    this.canvas.ctx.fillStyle = elmH.fillColor.substring(0, 7) + elmH.mouseLight
-                                this.canvas.drawFillRect(bRect.ax, bRect.ay, bRect.bx, bRect.by)
-                                this.canvas.ctx.strokeStyle = elmH.strokeColor
-                                this.canvas.drawRect(bRect.ax, bRect.ay, bRect.bx, bRect.by)
-                                this.canvas.drawTextTopLeft(elmH.txt, bRect.ax + this.marge, bRect.ay + this.marge, 9999, elmH.letter_size, elmH.txt_color, elmH.txt_font)
-                                this.buttonList.push({
-                                    rect : bRect,
-                                    callback : elmH.callback,
-                                    callback_data : elmH.callback_data,
-                                    key_event : elmH.key_event,
-                                    windowInfo : elmH.windowInfo,
-                                    mouseLight : true
-                                })
-                                horizX += this.marge * 3 + elmH.txt_size
-                                break;
-                            case ("img"):
-                                this.canvas.ctx.drawImage(elmH.img, this.x + horizX, py, elmH.len_x, elmH.len_y)
-                                horizX += elmH.len_y + this.marge
-                                break
-                        } 
-                    }
-                    py += zone.len_y + this.marge
-                    break
-            }
-        }
-        this.CheckInfoWindow()
-    }
-    click_buton_check = (x, y) => {
-        for (var z in this.buttonList) {
-            var buto = this.buttonList[z]
-            if (isInRect(x, y, buto.rect)) {
-                buto.callback(buto.callback_data)
-                return (true)
-            }
-        }
-        return (false)
-    }
-
-    mouse_move_check = (x, y) => {
-        for (var z in this.buttonList) {
-            var buto = this.buttonList[z]
-            if (buto.mouseLight && isInRect(x, y, buto.rect)) {
-                this.needRedraw = true
-                return (true)
-            }
-        }
-        return (false)
-    }
-
-    CheckInfoWindow = (redraw) => {
-        if (!this.uiManager.controler)
-            return false
-        var mpos = this.uiManager.controler.mousePos
-        if (!mpos)
-            return
-        if (new Date().getTime() - mpos.lastTime < MYUI_WINDOWINFO_MOUSETIME) {
-            if (this.InfoWindowPos) {
-                this.InfoWindowPos = false
-                this.needRedraw = true;
-            }
-            return false
-        }
-        if (!this.InfoWindowPos)
-            this.InfoWindowPos = {
-                x : mpos.x,
-                y : mpos.y
-            }
-        else if (!redraw && mpos.x == this.InfoWindowPos.x && mpos.y == this.InfoWindowPos.y)
-            return false
-
-        for (var z in this.buttonList) {
-            var b = this.buttonList[z]
-            if (b.windowInfo && isInRect(mpos.x, mpos.y, b.rect)) {
-                var wUI = new MyUI(this.canvas, mpos.x, mpos.y, 50, 1, this.background, this.stroke, 1)
-                wUI.addTextZone("  Info  ", MYUI_LETTER_SIZE, 9999, '#000000', MYUI_FONT)
-                for (var i in b.windowInfo) {
-                    var e = b.windowInfo[i]
-                    if (e.callback)
-                        wUI.addTextZone(e.callback(e.input), MYUI_LETTER_SIZE, 9999, '#000000', MYUI_FONT)
-                }
-                wUI.drawUI()
-                return true
-            }
-        }
-        return false
+    deleteGUI() {
+        this.uiContainer.remove()
     }
 
 }
 
-class UIManager { 
-    constructor (controlerManager) {
-        this.controler = controlerManager
-        this.UI_list = []
-    }
 
-    createUI = (canvas, x, y, lenx, scale, background, stroke, marge) => {
-        var UI = new MyUI(this, canvas, x, y, lenx, scale, background, stroke, marge)
-        this.UI_list.push(UI)
-        return UI
-    }
-
-    CheckInput = (event) => {
-        var key = event.key
-        for (var z in this.UI_list) {
-            var UI = this.UI_list[z]
-            for (var b in UI.buttonList) {
-                var buto = UI.buttonList[b]
-                if (buto.key_event && buto.key_event == key) {
-                    buto.callback(buto.callback_data)
-                    return (true)
-                }
-                if (event.type == "click")
-                    ;
-                if (event.type == "click" && isInRect(event.x, event.y, buto.rect)) {
-                    buto.callback(buto.callback_data)
-                    return (true)
-                }
-            }
-        }
-        return (false)
-    }
-
-    Mouse_Input = (x, y) => {
-        for (var z in this.UI_list) {
-            var UI = this.UI_list[z]
-            var check = UI.click_buton_check(x, y)
-            if (check)
-                return (true)
-        }
-        return (false)
-    }
-}
 class SoundManager {
     constructor() {
         this.sounds = []
@@ -577,13 +154,14 @@ class OffScreen{
 class MyScreen{         //the class managing displaying image. the main canvas, and all the offscreen canvas.
     constructor(){
         this.fps = TIME_REFRESH_SCREEN_DEFAULT
-        this.canvas = document.createElement("canvas")
+        this.canvas = document.getElementById("fullscreenCanvas")//document.createElement("canvas")
         this.canvas.width = window.innerWidth
         this.canvas.height = window.innerHeight
         this.canvas.style.position = 'absolute';
         this.canvas.style.top = "0px";
         this.canvas.style.left = "0px"
-	    document.body.appendChild(this.canvas)
+        this.canvas.style.zIndex = 0
+        //this.canvas.id = 
         this.ctx = this.canvas.getContext("2d")
 
         this.offscreenCanvas = []
@@ -819,7 +397,7 @@ class Building {
         this.x = Number(x)
         this.y = Number(y)
         this.id1 = Number(id1)
-        this.id2 = (id2 == undefined) ? undefined : Number(id2)
+        this.id2 = (isNaN(id2) || (id2) < 0) ? undefined : Number(id2)
         this.r = Number(r)
     }
 }
@@ -890,6 +468,8 @@ class MapCode {
     }
 
     moveMap = (dx, dy) => {
+        dx = Number(dx)
+        dy = Number(dy)
         let newBuildings = []
         for (var z in this.buildings) {
             let bu = this.buildings[z]
@@ -906,13 +486,14 @@ class MapCode {
         let newBuildings = []
         for (var z in this.buildings) {
             let bu = this.buildings[z]
-            let newb
-            if (Aid1 == bu.id1 && Aid2 == bu.id2) {
+            let newb = undefined
+            if (Aid1 == bu.id1) {
+                if (!((Aid2 || bu.id2) && Aid2 != bu.id2))
+                    newb = new Building(bu.x, bu.y, Bid1, Bid2, bu.r)
                 if (Bid1 == undefined)
                     continue
-                newb = new Building(bu.x, bu.y, Bid1, Bid2, bu.r)
             }
-            else
+            if (!newb)
                 newb = bu
             newBuildings.push(newb)
         }
@@ -963,7 +544,7 @@ class MapCode {
 
     saveToLocalStorage(name) {
         var str = buildingsListToTxt(this.buildings)
-        localStorage.setItem(name, str)
+        localStorage.setItem("mapsave:" + name, str)
         console.log("saved in Local Storage as " + name)
     }
 
@@ -1057,6 +638,7 @@ generateMapFromHouse = (houses, maxtry, maxhouse, minDistBetweenHouse, dx, dy) =
     for (var z in houses)  {
         houses[z].convertToMap()
         houses[z].hasBeenPlaced = 0
+        houses[z].maxPlace = (isNaN(houses[z].maxPlace) || houses[z].maxPlace < 0) ? 0 : houses[z].maxPlace
     }
     for (var z in exclusionZone) {
         let zone = exclusionZone[z]
@@ -1125,14 +707,11 @@ generateMapFromHouse = (houses, maxtry, maxhouse, minDistBetweenHouse, dx, dy) =
             }
         }
         generatedMap.pastFromMap(h.map, dx, dy)
-        console.log("copying to map", dx, dy)
-        console.log("placing nb of building : ", h.map.buildings.length)
-        console.log("new amount of building = ", generatedMap.buildings.length)
     }
     currentMap = generatedMap
     console.log("end of generation")
 }
-
+let textToDisplayOn_DrawWithmouse_ViewMenu = ""
 
 class MapDisplay {
     constructor(offscreenFloor) {
@@ -1145,6 +724,7 @@ class MapDisplay {
         }
         this.offscreenFloor = offscreenFloor
         this.clickSelectionfrom = undefined
+
     }
 
     getPixelFromPos(x, y) {
@@ -1213,13 +793,14 @@ class MapDisplay {
     clickOnMap = (x, y) => {
         let selection = []
         let hasSelected = false
+        let mode = currentDrawMode
         let pos = this.getPosFromPixel(x, y)
         let bpos = {x : Math.floor(pos.x), y : Math.floor(pos.y)}
         if (bpos.x < 0 || bpos.y < 0 || bpos.x > 149 || bpos.y > 149) {
             this.clickSelectionfrom = undefined
             return (false)
         }
-        if (guiMainMenuSelector == "mouse") {
+        if (guiMainMenuSelector == "drawWithMouseMenuGUI") {
             if (mouseSelectorList[mouseSelectorId] == "point") {
                 selection.push({x : bpos.x, y : bpos.y})
                 hasSelected = true
@@ -1244,8 +825,30 @@ class MapDisplay {
                     hasSelected = true 
                 }
             }
-            let mode = mouseDrawModeList[mouseDrawModeId]
-            if (hasSelected) {
+            if ((mode == "add" || mode == "replace") && !getBuildingTypeFromGUI())
+                console.log("unvalid building input")
+            else if (hasSelected) {
+                if (mode == "view") {   
+                    textToDisplayOn_DrawWithmouse_ViewMenu = [
+                        "x:" + bpos.x + ", y:" + bpos.y,
+                    ]
+                    let buildings_view = []
+                    for (var z in currentMap.buildings) {
+                        let b = currentMap.buildings[z]
+                        if (b.x == bpos.x && b.y == bpos.y)
+                            buildings_view.push(b)
+                    }
+                    textToDisplayOn_DrawWithmouse_ViewMenu.push("nb of building : " + buildings_view.length)
+                    for (var z in buildings_view) {
+                        let b = buildings_view[z]
+                        let txt = "-id1:" + b.id1
+                        if (b.id2)
+                            txt += ", id2:" + b.id2
+                        txt += ", r:" + b.r
+                        textToDisplayOn_DrawWithmouse_ViewMenu.push(txt)
+                    }
+                    changeMenuSelector("drawWithMouseMenuGUI")
+                }
                 if (mode == "past") {
                     currentMap.pastFromMap(mapCopied, bpos.x, bpos.y)
                 }
@@ -1316,8 +919,14 @@ class MapDisplay {
             let pos = myControllersManager.mousePos
             let mousepos = this.getPosFromPixel(pos.x, pos.y)
             if (mousepos.x >= -1 && mousepos.y >= -1 && mousepos.x < 151 && mousepos.y < 151) {
-                let start = this.getPixelFromPos(this.clickSelectionfrom.x, this.clickSelectionfrom.y)
-                let end = this.getPixelFromPos(Math.floor(mousepos.x + 1), Math.floor(mousepos.y + 1))
+                let blocksFrom = {...this.clickSelectionfrom}
+                let blockTo = {...mousepos}
+                if (blocksFrom.x > blockTo.x) 
+                    blocksFrom.x += 1
+                if (blocksFrom.y > blockTo.y) 
+                    blocksFrom.y += 1
+                let start = this.getPixelFromPos(blocksFrom.x, blocksFrom.y)
+                let end = this.getPixelFromPos(blockTo.x, blockTo.y)
                 if (end.x < start.x) {
                     let tmp = end.x
                     end.x = start.x
@@ -1336,130 +945,219 @@ class MapDisplay {
     }
 }
 
-let guiMainMenuSelector = undefined
+let guiMainMenuSelector = "mainMenu"
 
 
 let currentMap = new MapCode()
 let mapCopied = undefined
 
-let gameUI
+let  mainGUI = undefined
 
-InputFromRange = (min, max, text, defaultValue) => {
-    let value = window.prompt(text, defaultValue)
-    if (isNaN(value) || value < min || value > max)
-        value = defaultValue
-    return (Number(value))
+textToDisplayOn_DrawWithmouse_ViewMenu = []
+
+function changeMenuSelector(name) {
+    guiMainMenuSelector = name
+    if (mainGUI)
+        mainGUI.deleteGUI()
+    mainGUI = new myGUI("mainGUI", "mainGUI", document.body)
+    if (name === "mainMenu")
+        mainMenuGUI()
+    else if (name === "loadSaveMap")
+        saveMenuGUI()
+    else if (name === "moveMapMenu")
+        moveMapMenu()
+    else if (name === "replaceInMapMenu")
+        replaceMenuGui()
+    else if (name === "drawWithMouseMenuGUI")
+        drawWithMouseMenuGUI()
+    else if (name === "generateFromBuildingList")
+        houseGeneratorMenu()
+    else
+        return (console.log("no menu found", name))
 }
 
-mainMenuGui = (gameUI) => {
-    gameUI.addTextZone("Devast.io Map Editor ++", 60, 9999, "black", "serif")
-    gameUI.addTextZone("unofficial, fan-made, ugly but it work, v0.1", 10, 9999, "black", "serif")
-    gameUI.addButton("Load/Save Map", 20, '#000000', "#ffffff", "#000000", () => {guiMainMenuSelector = "save"}, undefined, "serif")
-    gameUI.addButton("load map from Text Code", 20, '#000000', "#ffffff", "#000000", () => {currentMap = new MapCode().createFromText(window.prompt("Enter the map codee", "!b=..."))}, undefined, "serif")
-    //gameUI.addButton("load saved map", 20, '#000000', "#ffffff", "#000000", () => {currentMap = new MapCode(); currentMap.LoadFromLocalStorage()}, undefined, "serif")
-    gameUI.addButton("new empty map", 20, '#000000', "#ffffff", "#000000", () => {currentMap = new MapCode()}, undefined, "serif")
-    if (!currentMap)
-        return
-    //gameUI.addButton("save map", 20, '#000000', "#ffffff", "#000000", () => {currentMap.saveToLocalStorage()}, undefined, "serif")
-    gameUI.addButton("copy map to clipboard", 20, '#000000', "#ffffff", "#000000", () => {navigator.clipboard.writeText(buildingsListToTxt(currentMap.buildings), window.alert("map copied"))}, undefined, "serif")
-    gameUI.addButton("1. Move Map", 20, '#000000', "#ffffff", "#000000", () => {guiMainMenuSelector = "moveMap"}, undefined, "serif")
-    gameUI.addButton("2. Replace in Map", 20, '#000000', "#ffffff", "#000000", () => {guiMainMenuSelector = "replace"}, undefined, "serif")
-    gameUI.addButton("3. Draw with mouse", 20, '#000000', "#ffffff", "#000000", () => {guiMainMenuSelector = "mouse"}, undefined, "serif")
-    gameUI.addButton("4. Generate from houses", 20, '#000000', "#ffffff", "#000000", () => {guiMainMenuSelector = "house"}, undefined, "serif")
+function mainMenuGUI() {
+    mainGUI.addElement("h0", "title", {textContent : "DEVAST MAP EDITOR ++", className : "title"}, undefined)
+    mainGUI.addElement("h7", "title", {textContent : "unofficial, fan-made, ugly but it work, v1.0"}, undefined)
+    //Load Save Map button
+    mainGUI.addElement("button", "LoadSaveMapBtn", {textContent : "💾 Save/Load map", className : "mainButton"}, [{
+        eventType : "click",
+        functionOnEvent : () => {changeMenuSelector("loadSaveMap")}
+    }])
+    //load map from text code
+    mainGUI.addElement("button", "LoadfromTextCodeBtn", {textContent : "📖 Load map from text", className : "mainButton"}, [{
+        eventType : "click",
+        functionOnEvent : () => {currentMap = new MapCode().createFromText(window.prompt("Enter the map codee", "!b=..."))}
+    }])
+    // new empty map
+    mainGUI.addElement("button", "newEmptyMapbtn", {textContent : "✨ new empty map", className : "mainButton"}, [{
+        eventType : "click",
+        functionOnEvent : () => {currentMap = new MapCode()}
+    }])
+    //copy to clipboard
+    mainGUI.addElement("button", "copyToClipoardBtn", {textContent : "📋 Copy to clipboard", className : "mainButton"}, [{
+        eventType : "click",
+        functionOnEvent : () => {navigator.clipboard.writeText(buildingsListToTxt(currentMap.buildings), window.alert("map copied"))}
+    }])
+
+    mainGUI.addElement("h7", undefined, {textContent : "---"}, undefined)
+
+    //move Map Menu
+    mainGUI.addElement("button", "moveMapMenudBtn", {textContent : "Move map ← ↑ → ↓", className : "mainButton"}, [{
+        eventType : "click",
+        functionOnEvent : () => {changeMenuSelector("moveMapMenu")}
+    }])
+
+    //replace in map Menu
+    mainGUI.addElement("button", "replaceInMapMenuBtn", {textContent : "Replace in map 🔄", className : "mainButton"}, [{
+        eventType : "click",
+        functionOnEvent : () => {changeMenuSelector("replaceInMapMenu")}
+    }])
+
+    //draw with mouse menu
+    mainGUI.addElement("button", "replaceInMapMenuBtn", {textContent : "Draw with mouse 🖱️", className : "mainButton"}, [{
+        eventType : "click",
+        functionOnEvent : () => {changeMenuSelector("drawWithMouseMenuGUI")}
+    }])
+
+    //generate from building list
+    mainGUI.addElement("button", "generateFromBuildingList", {textContent : "Generate from Building List 🏗️", className : "mainButton"}, [{
+        eventType : "click",
+        functionOnEvent : () => {changeMenuSelector("generateFromBuildingList")}
+    }])
 }
 
-//REPLACE MAP
 
-let replaceMapInput = {
-    Aid1 : 0,
-    Aid2 : undefined,
-    Bid1 : -1,
-    Bid2 : undefined
-}
+//SAVE MAP MENU
 
-applyReplaceMap = () => {
-    currentMap.replaceMap(replaceMapInput.Aid1, replaceMapInput.Aid2, replaceMapInput.Bid1, replaceMapInput.Bid2)
-}
+let locallySavedMap = []
 
-replaceMenuGui = () => {
-    gameUI.addTextZone("replace a building type by another type\nfrom building type... : ", 25, 9999, "black", "serif")
-    gameUI.addButton("Id1 : " + replaceMapInput.Aid1, 15, '#000000', "#ffffff", "#000000", () => {replaceMapInput.Aid1 = InputFromRange(0, 9999, "enter building id1", replaceMapInput.Aid1)}, undefined, "serif")
-    let aid2txt = replaceMapInput.Aid2 == undefined ? "None" : replaceMapInput.Aid2
-    gameUI.addButton("Id2 : " + aid2txt, 15, '#000000', "#ffffff", "#000000", () => {replaceMapInput.Aid2 = InputFromRange(-9999, 9999, "enter building id1 (negative value if no second id)", replaceMapInput.Aid1); replaceMapInput.Aid2 = (replaceMapInput.Aid2 < 0) ? undefined : replaceMapInput.Aid2}, undefined, "serif")
-    gameUI.addTextZone("...to building type : ", 25, 9999, "black", "serif")
-    let bid1txt = replaceMapInput.Bid1 == -1 ? "just delete" : "Id1 : " + replaceMapInput.Bid1
-    gameUI.addButton(bid1txt, 15, '#000000', "#ffffff", "#000000", () => {replaceMapInput.Bid1 = InputFromRange(-9999, 9999, "enter building id1 (negative value for no replacement)", replaceMapInput.Bid1)}, undefined, "serif")
-    if (replaceMapInput.Bid1 != -1) {
-        let bid2txt = replaceMapInput.Bid2 == undefined ? "None" : replaceMapInput.Bid2
-        gameUI.addButton(bid2txt, 15, '#000000', "#ffffff", "#000000", () => {replaceMapInput.Bid2 = InputFromRange(-9999, 9999, "enter building id2 (negative value if no second id)", replaceMapInput.Bid2); replaceMapInput.Bid2 = (replaceMapInput.Bid2 < 0) ? undefined : replaceMapInput.Bid2}, undefined, "serif")
-    }
-    gameUI.addButton("REPLACE !!", 20, '#000000', "#ffffff", "#000000", () => {applyReplaceMap()}, undefined, "serif")
-    gameUI.addButton("Return", 20, '#000000', "#ffffff", "#000000", () => {guiMainMenuSelector = undefined}, undefined, "serif")
-}
-
-//SAVE
-
-loadSaveMenu = () => {
-    gameUI.addButton("Return", 20, '#000000', "#ffffff", "#000000", () => {guiMainMenuSelector = undefined}, undefined, "serif")
-    gameUI.addTextZone("local Storage Save", 25, 9999, "black", "serif")
-    for (var i = 0; i < 10; i++) {
-        let saveName = "save:" + i
-        let uiElmList = [
-            {
-                type : "txt",
-                txt : saveName,
-                txt_color : "black",
-                max_letters : 9999,
-                letter_size : 15,
-                txt_font : "serif"
-            },{
-                type : "button",
-                callback : () => {currentMap.saveToLocalStorage(saveName)},
-                callback_data : undefined,
-                txt : "Save",
-                txt_color : "black",
-                max_letters : 9999,
-                letter_size : 15,
-                txt_font : "serif",
-                fillColor : "#ffffff"
-            }
-        ]
-        if (localStorage.getItem(saveName)) {
-            uiElmList.push({
-                type : "button",
-                callback : () => {currentMap.LoadFromLocalStorage(saveName)},
-                callback_data : undefined,
-                txt : "Load",
-                txt_color : "black",
-                max_letters : 9999,
-                letter_size : 15,
-                txt_font : "serif",
-                fillColor : "#ffffff"
-            })
-            uiElmList.push({
-                type : "button",
-                callback : () => {localStorage.removeItem(saveName)},
-                callback_data : undefined,
-                txt : "Delete",
-                txt_color : "black",
-                max_letters : 9999,
-                letter_size : 15,
-                txt_font : "serif",
-                fillColor : "#ffffff"
+function loadAllSavedMap() {
+    locallySavedMap = []
+    for (var z in localStorage) {
+        if (z.startsWith("mapsave:")) {
+            locallySavedMap.push({
+                name : z.replace("mapsave:", ""),
             })
         }
-        gameUI.addHorizontalElem(uiElmList)
     }
 }
 
+function saveMenuGUI() {
+    mainGUI.addElement("h0", "title", {textContent : "Map Locally saved", className : "title"}, undefined)
+    mainGUI.addElement("h7", "textDescription", {textContent : "save or load map (on your browser local storage)"}, undefined)
+
+    //return button
+    mainGUI.addElement("button", "copyToClipoardBtn", {textContent : "🔙 return", className : "secondary-button"}, [{
+        eventType : "click",
+        functionOnEvent : () => {changeMenuSelector("mainMenu")}
+    }])
+
+    //save current map
+    const saveCurrentMapContainer = new myGUI("saveCurrentMapContainer", "secondary-container", mainGUI.uiContainer)
+    saveCurrentMapContainer.addElement("input", "saveCurrentMapTxt", {type : "text"}, undefined)
+    saveCurrentMapContainer.addElement("button", "saveCurrentMapBtn", {textContent : "save as", className : "mainButton"}, [{
+        eventType : "click",
+        functionOnEvent : () => {currentMap.saveToLocalStorage(document.getElementById("saveCurrentMapTxt").value);changeMenuSelector("loadSaveMap")}
+    }])
+
+    loadAllSavedMap()
+    for (var z in locallySavedMap) {
+        let map = locallySavedMap[z]
+        const savedMapContainer = new myGUI("savedMapContainer:" + map.name, "secondary-container", mainGUI.uiContainer)
+        savedMapContainer.addElement("button", "loadSavedMap:" + map.name, {textContent : "load", className : "mainButton"}, [{
+            eventType : "click",
+            functionOnEvent : () => {currentMap.LoadFromLocalStorage("mapsave:" + map.name)}
+        }])
+        savedMapContainer.addElement("button", "deleteSavedMap:" + map.name, {textContent : "delete", className : "mainButton"}, [{
+            eventType : "click",
+            functionOnEvent : () => {localStorage.removeItem("mapsave:" + map.name);changeMenuSelector("loadSaveMap")}
+        }])
+        savedMapContainer.addElement("label", "savedmapLabel:map.name", {className : "labelType1" ,textContent : map.name, for : "deleteSavedMap:" + map.name}, undefined)
+    }
 
 
-//MOVING MAP
+}
+
+
+//Move Map Menu
 
 let moveMapInput = {
     x : 0,
     y : 0,
-    corner : undefined
+}
+
+function updateMoveeMapInputXYLabelValue(value) {
+    if (value.x) {
+        let x = value.x
+        moveMapInput.x = x
+        const xLabel = document.getElementById("moveMapInputXlabel")
+        if (xLabel)
+            xLabel.textContent = "move X : " + moveMapInput.x
+        const xRange = document.getElementById("moveMapInputX")
+        if (xRange)
+            xRange.value = x
+    }
+    if (value.y) {
+        let y = value.y
+        moveMapInput.y = y
+        const yLabel = document.getElementById("moveMapInputYlabel")
+        if (yLabel)
+            yLabel.textContent = "move Y : " + moveMapInput.y
+        const yRange = document.getElementById("moveMapInputY")
+        if (yRange)
+            yRange.value = y
+    }
+}
+
+function moveMapMenu () {
+    mainGUI.addElement("h0", "title", {textContent : "Move Map", className : "title"}, undefined)
+    mainGUI.addElement("h7", "textDescription", {textContent : "Relocate all entities on the map in the x and y directions."}, undefined)
+    mainGUI.addElement("h7", "textDescription", {textContent : "Entities moved outside the map limite [0;149] are deleted"}, undefined)
+
+    //apply the move button
+    mainGUI.addElement("button", "copyToClipoardBtn", {textContent : "↔ Perform Movement ↕", className : "mainButton"}, [{
+        eventType : "click",
+        functionOnEvent : () => {applyMove()}
+    }])
+    //moving X axis input
+    mainGUI.addElement("label", "moveMapInputXlabel", {textContent : "move X : " + moveMapInput.x, for : "moveMapInputX"}, undefined)
+    mainGUI.addElement("input", "moveMapInputX", {type : "range", min : "-149", max : "149", value : moveMapInput.x}, [{
+        eventType : "input",
+        functionOnEvent : (e) => {updateMoveeMapInputXYLabelValue({x : e.target.value})}
+    }])
+
+    //moving Y axis input
+    mainGUI.addElement("label", "moveMapInputYlabel", {textContent : "move Y : " + moveMapInput.y, for : "moveMapInputY"}, undefined)
+    mainGUI.addElement("input", "moveMapInputY", {type : "range", min : "-149", max : "149", value : moveMapInput.y}, [{
+        eventType : "input",
+        functionOnEvent : (e) => {updateMoveeMapInputXYLabelValue({y : e.target.value})}
+    }])
+
+    const moveMapTopBotLeftRightGUI = new myGUI("movemapGUI", "mainGUI", mainGUI.uiContainer)
+    moveMapTopBotLeftRightGUI.modifyCSS("position", "sticky")
+    moveMapTopBotLeftRightGUI.addElement("button", "topLeftButton", {textContent : "top left ← ↑", className : "secondary-button"}, [{
+        eventType : "click",
+        functionOnEvent : () => {setToCorner("min", "min");updateMoveeMapInputXYLabelValue({x : moveMapInput.x, y : moveMapInput.y})}
+    }])
+    moveMapTopBotLeftRightGUI.addElement("button", "topRightButton", {textContent : "top right ↑ →", className : "secondary-button"}, [{
+        eventType : "click",
+        functionOnEvent : () => {setToCorner("max", "min");updateMoveeMapInputXYLabelValue({x : moveMapInput.x, y : moveMapInput.y})}
+    }])
+    moveMapTopBotLeftRightGUI.addElement("button", "botLeftButton", {textContent : "bot left ← ↓", className : "secondary-button"}, [{
+        eventType : "click",
+        functionOnEvent : () => {setToCorner("min", "max");updateMoveeMapInputXYLabelValue({x : moveMapInput.x, y : moveMapInput.y})}
+    }])
+    moveMapTopBotLeftRightGUI.addElement("button", "bottButton", {textContent : "bot right ↓ →", className : "secondary-button"}, [{
+        eventType : "click",
+        functionOnEvent : () => {setToCorner("max", "max");updateMoveeMapInputXYLabelValue({x : moveMapInput.x, y : moveMapInput.y})}
+    }])
+
+    //return button
+    mainGUI.addElement("button", "copyToClipoardBtn", {textContent : "🔙 return", className : "secondary-button"}, [{
+        eventType : "click",
+        functionOnEvent : () => {changeMenuSelector("mainMenu")}
+    }])
 }
 
 setToCorner = (modx, mody) => {
@@ -1479,93 +1177,353 @@ applyMove = () => {
     moveMapInput = {
         x : 0,
         y : 0,
-        corner : undefined
     }
+    changeMenuSelector("moveMapMenu")
+}
+
+//REPLACE MAP
+
+let replaceMapInput = {
+    Aid1 : 0,
+    Aid2 : undefined,
+    Bid1 : -1,
+    Bid2 : undefined
+}
+
+applyReplaceMap = () => {
+    let Aid1 = document.getElementById("buildingReplaceFromAid1").value
+    let Aid2 = document.getElementById("buildingReplaceFromAid2").value
+    let Bid1 = document.getElementById("buildingReplaceToBid1").value
+    let Bid2 = document.getElementById("buildingReplaceToBid2").value
+
+    if (Aid1 == "" || isNaN(Aid1))
+        return console.log("ApplyReplaceMap invalide input", Aid1, Aid2, Bid1, Bid2)
+    if (Bid1 == "" || isNaN(Bid1))
+        Bid1 = undefined
+    Aid2 = (Aid2 == "" || isNaN(Aid2)) ? undefined : Aid2
+    Bid2 = (Bid2 == "" || isNaN(Bid2)) ? undefined : Bid2
+    currentMap.replaceMap(Aid1, Aid2, Bid1, Bid2)
+}
+
+replaceMenuGui = () => {
+    mainGUI.addElement("h0", "title", {textContent : "Replace In Map", className : "title"}, undefined)
+    mainGUI.addElement("h7", "textDescription", {textContent : "replace a building type by another type"}, undefined)
+
+    //box where "replace from" and "by" are placed
+    const secondaryContainer = new myGUI("buildingReplaceFrom", "secondary-container", mainGUI.uiContainer)
+
+    //the building type input to replace
+    const buildingReplaceFrom = new myGUI("buildingReplaceFrom", "childui", secondaryContainer.uiContainer)
+    buildingReplaceFrom.modifyCSS("position", "sticky")
+    buildingReplaceFrom.modifyCSS("className","childui")
+
+    buildingReplaceFrom.addElement("h6", "textDescription", {textContent : "replace : "}, undefined)
+    //aid1
+    buildingReplaceFrom.addElement("label", "buildingReplaceFromAid1label", {textContent : "id1", for : "buildingReplaceFromAid1"}, undefined)
+    buildingReplaceFrom.addElement("input", "buildingReplaceFromAid1", {type : "text", size : "3"}, undefined)
+    //aid2
+    buildingReplaceFrom.addElement("label", "buildingReplaceFromAid2label", {textContent : "id2", for : "buildingReplaceFromAid2"}, undefined)
+    buildingReplaceFrom.addElement("input", "buildingReplaceFromAid2", {type : "text", size : "3"}, undefined)
+
+    //replacing by...
+    const buildingReplaceTo = new myGUI("buildingReplaceTo", "childui", secondaryContainer.uiContainer)
+    buildingReplaceTo.modifyCSS("position", "sticky")
+    buildingReplaceTo.modifyCSS("className","childui")
+
+    buildingReplaceTo.addElement("h6", "textDescription", {textContent : "by : "}, undefined)
+    //bid1
+    buildingReplaceTo.addElement("label", "buildingReplaceToBid1label", {textContent : "id1", for : "buildingReplaceToAid1"}, undefined)
+    buildingReplaceTo.addElement("input", "buildingReplaceToBid1", {type : "text", size : "3"}, undefined)
+    //bid2
+    buildingReplaceTo.addElement("label", "buildingReplaceToBid2label", {textContent : "id2", for : "buildingReplaceToAid2"}, undefined)
+    buildingReplaceTo.addElement("input", "buildingReplaceToBid2", {type : "text", size : "3"}, undefined)
+
+    //apply replacement
+    mainGUI.addElement("button", "applyReplacement", {textContent : "🔄 Apply replacement", className : "mainButton"}, [{
+        eventType : "click",
+        functionOnEvent : () => {applyReplaceMap()}
+    }])
+
+    //return button
+    mainGUI.addElement("button", "copyToClipoardBtn", {textContent : "🔙 return", className : "secondary-button"}, [{
+        eventType : "click",
+        functionOnEvent : () => {changeMenuSelector("mainMenu")}
+    }])
 }
 
 
-moveMapMenu = () => {
-    gameUI.addTextZone("add X/Y offset to all building\nentities moved outside the map limits (0 -> 150) are removed", 25, 9999, "black", "serif")
-    gameUI.addButton("X : " + moveMapInput.x, 20, '#000000', "#ffffff", "#000000", () => {moveMapInput.x = InputFromRange(-149, 149,"X = ", moveMapInput.x)}, undefined, "serif")
-    gameUI.addButton("Y : " + moveMapInput.y, 20, '#000000', "#ffffff", "#000000", () => {moveMapInput.y = InputFromRange(-149, 149,"Y = ", moveMapInput.y)}, undefined, "serif")
-    gameUI.addButton("Top + Left", 15, '#000000', "#ffffff", "#000000", () => {setToCorner("min", "min")}, undefined, "serif")
-    gameUI.addButton("Top + Right", 15, '#000000', "#ffffff", "#000000", () => {setToCorner("max", "min")}, undefined, "serif")
-    gameUI.addButton("Bot + Left", 15, '#000000', "#ffffff", "#000000", () => {setToCorner("min", "max")}, undefined, "serif")
-    gameUI.addButton("Bot + Right", 15, '#000000', "#ffffff", "#000000", () => {setToCorner("max", "max")}, undefined, "serif")
-    gameUI.addButton("MOVE !!", 20, '#000000', "#ffffff", "#000000", () => {applyMove()}, undefined, "serif")
-    gameUI.addButton("Return", 20, '#000000', "#ffffff", "#000000", () => {guiMainMenuSelector = undefined}, undefined, "serif")
-}
-
-//Draw with mouse
+//DRAW WITH MOUSE MENU
 
 let mouseDrawModeList = ["view" ,"add", "delete", "replace", "copy", "past"]
-let mouseDrawModeId = 0
+let currentDrawMode = "view"
 let mouseSelectorList = ["point", "rect"]
 let mouseSelectorId = 0
 let buildingTypeSeleced = {
     id1 : 0,
-    id2 : undefined,
+    id2 : "",
     r : 0
 }
 
-mouseDrawMap_MainMenu = () => {
-    gameUI.addTextZone("Mouse Drawing", 25, 9999, "black", "serif")
-    gameUI.addButton("Return", 20, '#000000', "#ffffff", "#000000", () => {guiMainMenuSelector = undefined}, undefined, "serif")
-    
-    let pos = myMapDisplay.getPosFromPixel(myMousePos.x, myMousePos.y)
-    pos = {
-        x : Math.floor(pos.x),
-        y : Math.floor(pos.y)
+function getBuildingTypeFromGUI () {
+    let id1 = document.getElementById("guiId1_txtinput")
+    let id2 = document.getElementById("guiId2_txtinput")
+    let idr = document.getElementById("guiIdR_txtinput")
+
+    if (!id1 || !id2 || !idr)
+        return false
+    id1 = id1.value
+    id2 = id2.value
+    idr = idr.value
+    if (isNaN(id1))
+        return false
+    if (isNaN(idr))
+        idr = 0
+    buildingTypeSeleced = {
+        id1 : id1,
+        id2 : id2,
+        r : idr
     }
-    gameUI.addTextZone("pos : [" + pos.x + ":" + pos.y + "]", 25, 9999, "black", "serif")
-    let mode = mouseDrawModeList[mouseDrawModeId]
-    gameUI.addButton("mode : " + mode, 20, '#000000', "#ffffff", "#000000", () => {mouseDrawModeId = (mouseDrawModeId + 1) % mouseDrawModeList.length}, undefined, "serif")
-    if (mode == "view") {
-        for (var z in currentMap.buildings) {
-            let b = currentMap.buildings[z]
-            if (b.x == pos.x && b.y == pos.y)
-                gameUI.addTextZone("-id1 : " + b.id1 + "\nid2 : " + b.id2 + "\nX : " + b.x + "\nY : " + b.y + "\nrot : " + b.r , 15, 9999, "black", "serif")
-        }
-    }
-    else {
-        let selectMode = mouseSelectorList[mouseSelectorId]
-        gameUI.addButton("selector : " + selectMode, 20, '#000000', "#ffffff", "#000000", () => {mouseSelectorId = (mouseSelectorId + 1) % mouseSelectorList.length}, undefined, "serif")
-        if (mode == "add" || mode == "replace" || mode == "delete") {
-            let txtid1 = buildingTypeSeleced.id1 == undefined ? "None" : buildingTypeSeleced.id1
-            gameUI.addButton("id1 : " + txtid1, 20, '#000000', "#ffffff", "#000000", () => {buildingTypeSeleced.id1 = InputFromRange(-9999, 9999,"id1 = ", buildingTypeSeleced.id1); buildingTypeSeleced.id1 = buildingTypeSeleced.id1 < 0 ? undefined : buildingTypeSeleced.id1}, undefined, "serif")
-            if (buildingTypeSeleced.id1 != undefined) {
-                let txtid2 =  buildingTypeSeleced.id2 == undefined ? "None" : buildingTypeSeleced.id2
-                gameUI.addButton("id2 : " + txtid2, 20, '#000000', "#ffffff", "#000000", () => {buildingTypeSeleced.id2 = InputFromRange(-9999, 9999,"id2 = ", buildingTypeSeleced.id2); buildingTypeSeleced.id2 = buildingTypeSeleced.id2 < 0 ? undefined : buildingTypeSeleced.id2}, undefined, "serif")
-            }
-            if (buildingTypeSeleced.id1 != undefined)
-                gameUI.addButton("rot : " + buildingTypeSeleced.r, 20, '#000000', "#ffffff", "#000000", () => {buildingTypeSeleced.rot = InputFromRange(0, 3,"rotation [0-3] = ", buildingTypeSeleced.rot); buildingTypeSeleced.rot = Math.max(0, Math.min(buildingTypeSeleced.rot, 3))}, undefined, "serif")
-        }
-        if ((mode == "copy" || mode == "past") && mapCopied)
-            gameUI.addTextZone(mapCopied.buildings.length + " buildings copied", 25, 9999, "black", "serif")
-    }
+    return true
 }
 
+function drawWithMouseMenuGUI () {
+    mainGUI.addElement("h0", "title", {textContent : "Draw with mouse", className : "title"}, undefined)
+    mainGUI.addElement("h7", "textDescription", {textContent : "Edit your map"}, undefined)
+    if (currentDrawMode == "copy")
+        mouseSelectorId = mouseSelectorList.indexOf("rect")
+    if (currentDrawMode == "past" || currentDrawMode == "view")
+        mouseSelectorId = mouseSelectorList.indexOf("point")
 
-//Generate House
+    //SELECT MODE FOR DRAWING
+    //create a select element
+    const select_element = document.createElement("select")
+    select_element.id = "mouseMode_select"
+    for (var z in mouseDrawModeList) {  //add option (line) for each mode
+        const newOption = document.createElement('option');
+        newOption.value = mouseDrawModeList[z]
+        newOption.textContent = mouseDrawModeList[z]
+        if (mouseDrawModeList[z] == currentDrawMode)
+            newOption.selected = true
+        select_element.appendChild(newOption)
+    }
+    mainGUI.uiContainer.appendChild(select_element)
+    select_element.addEventListener('change', () => {
+        currentDrawMode = select_element.value
+        changeMenuSelector("drawWithMouseMenuGUI")
+    });
+
+    if (currentDrawMode == "view") {
+        for (var z in textToDisplayOn_DrawWithmouse_ViewMenu) {
+            mainGUI.addElement("h7", "textDescription", {textContent : textToDisplayOn_DrawWithmouse_ViewMenu[z]}, undefined)
+        }
+    }
+    let mouseSelectorMode = mouseSelectorList[mouseSelectorId]
+    //mouse selector mode button
+    let butonTxt = mouseSelectorMode == "point" ? "mouse selector • point" : "mouse selector □ rectangle"
+    mainGUI.addElement("button", "selectorModeButton", {textContent : butonTxt, className : "mainButton"}, [{
+        eventType : "click",
+        functionOnEvent : () => {
+            mouseSelectorId = (mouseSelectorId + 1) % mouseSelectorList.length;
+            mouseSelectorMode = mouseSelectorList[mouseSelectorId];
+            changeMenuSelector("drawWithMouseMenuGUI")}
+    }])
+
+    //the building type 
+    if (currentDrawMode == "add" || currentDrawMode == "replace") {
+        const buildingTypeGui = new myGUI("buildingTypeGui", "secondary-container", mainGUI.uiContainer)
+        //id1
+        const guiId1 = new myGUI("bguiId1", "childui", buildingTypeGui.uiContainer)
+        guiId1.modifyCSS("position", "sticky")
+        guiId1.modifyCSS("className","childui")
+        guiId1.addElement("label", "guiId1_txtinput_label", {textContent : "id1", for : "guiId1_txtinput"}, undefined)
+        guiId1.addElement("input", "guiId1_txtinput", {type : "text", size : "3", value : buildingTypeSeleced.id1}, undefined)
+        //bid2
+        const guiId2 = new myGUI("bguiId2", "childui", buildingTypeGui.uiContainer)
+        guiId2.modifyCSS("position", "sticky")
+        guiId2.modifyCSS("className","childui")
+        guiId2.addElement("label", "guiId2_txtinput_label", {textContent : "id2", for : "guiId2_txtinput"}, undefined)
+        guiId2.addElement("input", "guiId2_txtinput", {type : "text", size : "3", value : buildingTypeSeleced.id2}, undefined)
+        //rotation
+        const guiIdR = new myGUI("bguiIdR", "childui", buildingTypeGui.uiContainer)
+        guiIdR.modifyCSS("position", "sticky")
+        guiIdR.modifyCSS("className","childui")
+        guiIdR.addElement("label", "guiIdR_txtinput_label", {textContent : "rot", for : "guiIdR_txtinput"}, undefined)
+        guiIdR.addElement("input", "guiIdR_txtinput", {type : "text", size : "3", value : buildingTypeSeleced.r}, undefined)
+    }
+
+
+
+    //return button
+    mainGUI.addElement("button", "copyToClipoardBtn", {textContent : "🔙 return", className : "secondary-button"}, [{
+        eventType : "click",
+        functionOnEvent : () => {changeMenuSelector("mainMenu")}
+    }])
+}
+
+//GENRATE FROM HOUSE LIST
 
 let houseToGenList = []
-let maxTryGenHouse = 100
-let maxHouseToGen = 10
+let maxTryGenHouse = 1000
+let maxHouseToGen = 50
 
 let exclusionZone = []
 let minDistBetweenHouse = 0
 let placeHousesEveryX = 1
 let placeHousesEveryY = 1
 
-addHouseGen = () => {
-    let house = new House(window.prompt("enter house map code", "!b=..."), 1, "h" + houseToGenList.length)
+addHouseGen = (name) => {
+    name = (!name) ? "house" + houseToGenList.length : name
+    let house = new House(window.prompt("enter house map code", "!b=..."), 1, name)
     houseToGenList.unshift(house)
 }
 
-addExcluZone = () => {
-    let exzone = new ExclusionZone(50, 50, 100, 100)
+addExcluZone = (ax, ay, bx, by) => {
+    let exzone = new ExclusionZone(ax, ay, bx, by)
     exclusionZone.push(exzone)
 }
+
+houseGeneratorMenu = () => {
+    mainGUI.addElement("h0", "title", {textContent : "Generate From Building List", className : "title"}, undefined)
+
+    //Generate button
+    if (houseToGenList.length > 0)
+        mainGUI.addElement("button", "GenerateHouseMap", {textContent : "🏗️ Generate", className : "mainButton"}, [{
+            eventType : "click",
+            functionOnEvent : () => {generateMapFromHouse(houseToGenList, maxTryGenHouse, maxHouseToGen, minDistBetweenHouse)}
+        }])
+    
+    mainGUI.addElement("h5", undefined, {textContent : "Settings"})
+    //nb max of try input
+    mainGUI.addElement("label", "maxTryGenHouseInputlabel", {textContent : "number of placement attempts", for : "maxTryGenHouseInput"}, undefined)
+    mainGUI.addElement("input", "maxTryGenHouseInput", {type : "text", lenght : 6, value : maxTryGenHouse}, [{
+        eventType : "input",
+        functionOnEvent : (e) => {maxTryGenHouse = e.target.value}
+    }])
+
+    //nb max of building
+    mainGUI.addElement("label", "maxHouseToGenInputlabel", {textContent : "max number of successfull placement", for : "maxHouseToGenInput"}, undefined)
+    mainGUI.addElement("input", "maxHouseToGenInput", {type : "text", lenght : 6, value : maxHouseToGen}, [{
+        eventType : "input",
+        functionOnEvent : (e) => {maxHouseToGen = e.target.value}
+    }])
+
+    //minimal distance between house
+    mainGUI.addElement("label", "minDistBetweenHouselabel", {textContent : "minimal distance between house : " + minDistBetweenHouse, for : "minDistBetweenHouseInput"}, undefined)
+    mainGUI.addElement("input", "minDistBetweenHouseInput", {type : "range", min : "0", max : "147", value : minDistBetweenHouse}, [{
+        eventType : "input",
+        functionOnEvent : (e) => {
+            minDistBetweenHouse = e.target.value
+            const label = document.getElementById("minDistBetweenHouselabel")
+            label.textContent = "minimal distance between house : " + minDistBetweenHouse
+            const inputrange = document.getElementById("minDistBetweenHouseInput")
+            inputrange.value = minDistBetweenHouse
+        }
+    }])
+
+    //place house X and Y step
+    mainGUI.addElement("label", "placeHousesEveryXlabel", {textContent : "place house every X block : " + placeHousesEveryX, for : "placeHousesEveryXInput"}, undefined)
+    mainGUI.addElement("input", "placeHousesEveryXInput", {type : "range", min : "1", max : "149", value : placeHousesEveryX}, [{
+        eventType : "input",
+        functionOnEvent : (e) => {
+            placeHousesEveryX = e.target.value
+            const label = document.getElementById("placeHousesEveryXlabel")
+            label.textContent = "place house every X block : " + placeHousesEveryX
+            const inputrange = document.getElementById("placeHousesEveryXInput")
+            inputrange.value = placeHousesEveryX
+        }
+    }])
+    mainGUI.addElement("label", "placeHousesEveryYlabel", {textContent : "place house every Y block : " + placeHousesEveryY, for : "placeHousesEveryYInput"}, undefined)
+    mainGUI.addElement("input", "placeHousesEveryYInput", {type : "range", min : "1", max : "149", value : placeHousesEveryY}, [{
+        eventType : "input",
+        functionOnEvent : (e) => {
+            placeHousesEveryY = e.target.value
+            const label = document.getElementById("placeHousesEveryYlabel")
+            label.textContent = "place house every Y block : " + placeHousesEveryY
+            const inputrange = document.getElementById("placeHousesEveryYInput")
+            inputrange.value = placeHousesEveryY
+        }
+    }])
+
+    mainGUI.addElement("h5", undefined, {textContent : "Building List"})
+    //add building to the list
+    const addBuildingContainer = new myGUI("addBuildingContainer", "secondary-container", mainGUI.uiContainer)
+
+    addBuildingContainer.addElement("input", "addBuildingNameInput", {type : "text", placeholder : "building name"}, undefined)
+    addBuildingContainer.addElement("button", "addExclusionZoneButton", {textContent : "add", className : "secondary-button"}, [{
+        eventType : "click",
+        functionOnEvent : () => {addHouseGen(document.getElementById("addBuildingNameInput").value);changeMenuSelector("generateFromBuildingList")}
+    }])
+    
+    //building list
+    for (var z in houseToGenList) {
+        let b = houseToGenList[z]
+        const buildingToGenerateContainer = new myGUI("buildingToGenerateContainer:" + z, "containerHorizontal", mainGUI.uiContainer)
+        buildingToGenerateContainer.uiContainer.style.gap = "1%"
+        buildingToGenerateContainer.addElement("label", "savedmapLabel:" + z, {className : "labelType1" ,textContent : (!b.name) ? "-noName" : "-" + b.name + " ", for : "remove:" + z}, undefined)
+        buildingToGenerateContainer.addElement("button", "remove:" + z, {textContent : "remove", className : "secondary-button"}, [{
+            eventType : "click",
+            functionOnEvent : () => {
+                b.dead = true;
+                houseToGenList = houseToGenList.filter((h) => {return h.dead != true})
+                changeMenuSelector("generateFromBuildingList")
+            }
+        }])
+        buildingToGenerateContainer.addElement("label", "savedmapLabel:" + z, {className : "labelType1" ,textContent : "max placement : ", for : "houseMaxPlacementInput" + z}, undefined)
+        buildingToGenerateContainer.addElement("input", "houseMaxPlacementInput" + z, {type : "text", value : b.maxPlace}, [{
+            eventType : "input",
+            functionOnEvent : (e) => {b.maxPlace = e.target.value}
+        }]
+        )
+    
+    }
+
+    //Exclusion zone
+    //add exclusion zone
+    mainGUI.addElement("h5", undefined, {textContent : "Exclusion Zones"})
+    const exclusionZoneInputContainer = new myGUI("exclusionZoneInputContainer", "containerHorizontal", mainGUI.uiContainer)
+    exclusionZoneInputContainer.addElement("label", undefined, {textContent : "from XY : ", for : "ExcluZoneInputAX"})
+    exclusionZoneInputContainer.addElement("input", "ExcluZoneInputAX", {type : "text"}, undefined)
+    exclusionZoneInputContainer.addElement("input", "ExcluZoneInputAY", {type : "text"}, undefined)
+    exclusionZoneInputContainer.addElement("label", undefined, {textContent : "to XY : ", for : "ExcluZoneInputBX"})
+    exclusionZoneInputContainer.addElement("input", "ExcluZoneInputBX", {type : "text"}, undefined)
+    exclusionZoneInputContainer.addElement("input", "ExcluZoneInputBY", {type : "text"}, undefined)
+    exclusionZoneInputContainer.addElement("button", "AddExclusionZoneButton", {className : "secondary-button", textContent : "add"}, [{
+        eventType : "click",
+        functionOnEvent : () => {
+            let ax = document.getElementById("ExcluZoneInputAX").value
+            let ay = document.getElementById("ExcluZoneInputAY").value
+            let bx = document.getElementById("ExcluZoneInputBX").value
+            let by = document.getElementById("ExcluZoneInputBY").value
+            addExcluZone(ax, ay, bx, by)
+            changeMenuSelector("generateFromBuildingList")
+        }
+    }])
+    //exclusion zone list
+    if (exclusionZone.length > 0)
+        mainGUI.addElement("h6", undefined, {textContent : "dont place building in these zone : "})
+    for (var z in exclusionZone) {
+        let zone = exclusionZone[z]
+        const excluZoneContainer = new myGUI("exclusionZoneInputContainer", "containerHorizontal", mainGUI.uiContainer)
+        let text = "-from [" + zone.ax + ":" + zone.ay + "] to [" + zone.bx + ":" + zone.by + "]"
+        excluZoneContainer.addElement("label", undefined, {className : "labelType1" ,textContent : text, for : "removeExcluZone:" + z}, undefined)
+        excluZoneContainer.addElement("button", "removeExcluZone:" + z, {textContent : "remove", className : "secondary-button"}, [{
+            eventType : "click",
+            functionOnEvent : () => {
+                zone.dead = true;
+                exclusionZone = exclusionZone.filter((h) => {return h.dead != true})
+                changeMenuSelector("generateFromBuildingList")
+            }
+        }])
+    }
+
+    //return button
+    mainGUI.addElement("button", "copyToClipoardBtn", {textContent : "🔙 return", className : "secondary-button"}, [{
+        eventType : "click",
+        functionOnEvent : () => {changeMenuSelector("mainMenu")}
+    }])
+}
+
+/*
 
 houseGeneratorMenu = () => {
     gameUI.addTextZone("Place randomly houses/buildings on the map from a list", 25, 9999, "black", "serif")
@@ -1614,101 +1572,10 @@ houseGeneratorMenu = () => {
     }
 }
 
-houseGenAdvancedMenu = () => {
-    gameUI.addButton("Return", 20, '#000000', "#ffffff", "#000000", () => {guiMainMenuSelector = "house"}, undefined, "serif")
-    gameUI.addButton("minimal distance between houses : " + minDistBetweenHouse, 15, '#000000', "#ffffff", "#000000", () => {minDistBetweenHouse = InputFromRange(0, 147, "the minimal amount of blocks between 2 houses", minDistBetweenHouse)}, undefined, "serif")
-    gameUI.addButton("X step between house : " + placeHousesEveryX, 15, '#000000', "#ffffff", "#000000", () => {placeHousesEveryX = InputFromRange(1, 75, "X step between each house placement", placeHousesEveryX)}, undefined, "serif")
-    gameUI.addButton("Y step between house : " + placeHousesEveryY, 15, '#000000', "#ffffff", "#000000", () => {placeHousesEveryY = InputFromRange(1, 75, "X step between each house placement", placeHousesEveryY)}, undefined, "serif")
-    gameUI.addButton("add exclusion zone", 20, '#000000', "#ffffff", "#000000", () => {addExcluZone()}, undefined, "serif")
-    for (var z in exclusionZone) {
-        let exclu = exclusionZone[z]
-        let uiElmList = [
-            {
-                type : "txt",
-                txt : "-",
-                txt_color : "black",
-                max_letters : 9999,
-                letter_size : 15,
-                txt_font : "serif"
-            },
-            {
-                type : "button",
-                callback : () => {exclu.ax = InputFromRange(0, 149, "from X", exclu.ax)},
-                callback_data : undefined,
-                txt : "startX : " + exclu.ax,
-                txt_color : "black",
-                max_letters : 9999,
-                letter_size : 15,
-                txt_font : "serif",
-                fillColor : "#ffffff"
-            },
-            {
-                type : "button",
-                callback : () => {exclu.ay = InputFromRange(0, 149, "from Y", exclu.ay)},
-                callback_data : undefined,
-                txt : "startY : " + exclu.ay,
-                txt_color : "black",
-                max_letters : 9999,
-                letter_size : 15,
-                txt_font : "serif",
-                fillColor : "#ffffff"
-            },
-            {
-                type : "button",
-                callback : () => {exclu.bx = InputFromRange(0, 149, "to X", exclu.bx)},
-                callback_data : undefined,
-                txt : "endX : " + exclu.bx,
-                txt_color : "black",
-                max_letters : 9999,
-                letter_size : 15,
-                txt_font : "serif",
-                fillColor : "#ffffff"
-            },
-            {
-                type : "button",
-                callback : () => {exclu.by = InputFromRange(0, 149, "to Y", exclu.by)},
-                callback_data : undefined,
-                txt : "endY : " + exclu.by,
-                txt_color : "black",
-                max_letters : 9999,
-                letter_size : 15,
-                txt_font : "serif",
-                fillColor : "#ffffff"
-            }
-        ]
-        gameUI.addHorizontalElem(uiElmList)
-    }
-    
-}
 
-//MAIN
-myGuidisplayFunction = (offscreen) => {
 
-    if (mouseDrawModeList[mouseDrawModeId] == "copy")
-        mouseSelectorId = 1
-    if (mouseDrawModeList[mouseDrawModeId] == "past")
-        mouseSelectorId = 0
 
-    myGUI = new UIManager(myControllersManager)
-    gameUI = myGUI.createUI(offscreen, 0, 0, 25, 1, "#ffffff00", "black", 5)
-    if (guiMainMenuSelector == undefined)
-        mainMenuGui(gameUI)
-    else if (guiMainMenuSelector == "moveMap")
-        moveMapMenu()
-    else if (guiMainMenuSelector == "replace")
-        replaceMenuGui()
-    else if (guiMainMenuSelector == "mouse")
-        mouseDrawMap_MainMenu()
-    else if (guiMainMenuSelector == "save")
-        loadSaveMenu()
-    else if (guiMainMenuSelector == "house")
-        houseGeneratorMenu()
-    else if (guiMainMenuSelector == "houseAdvanced")
-        houseGenAdvancedMenu()
-
-    gameUI.drawUI()
-    offscreen.timeOutdraw = setTimeout(()=>{offscreen.needRedraw = 1}, 20)
-}
+*/
 console.log("hey it works !!")
 
 background = (offscreen) => {
@@ -1721,11 +1588,13 @@ background = (offscreen) => {
 
 let myMousePos = {x : 0, y : 0}
 MOVE_CAMERA_SPEED = 2.5
-let myGUI = undefined
 
 myControlFunction = (event) =>  {
-    if (myGUI && myGUI.CheckInput(event))
+
+    const guiElementToIgnore = document.getElementById('mainGUI');
+    if (guiElementToIgnore && event.target.closest('#mainGUI'))
         return
+
     if (event.type == "mousemove") {
         myMousePos = {
             x : event.x,
@@ -1793,13 +1662,11 @@ window.onload = () => {
     myMapDisplay = new MapDisplay(undefined)
     myMapDisplay.offscreenFloor = myScreen.addLayerCanvas("mapDisplay", 1, myMapDisplay.displayMap),
     
-    
-    guiOffScreen = myScreen.addLayerCanvas("gui", 2, myGuidisplayFunction)   //the offscreen of the GUI
     myControllersManager = new ControllersManager() //mouse/keyboard event
     myControllersManager.onControllerEventFunction = myControlFunction 
     mySounds = new SoundManager()
  //manage all the GUI, interracting with display and controllers manager
     
-
+    changeMenuSelector("mainMenu");
 }
 

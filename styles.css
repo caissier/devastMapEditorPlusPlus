@@ -1,0 +1,145 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+}
+
+.title {
+    font-size: 2rem;
+    color: white; /* White text */
+    text-shadow: 5px 5px 10px rgba(0, 0, 0, 0.8); /* Black shadow */
+    text-align: center; /* Center the text inside the h6 */
+}
+
+h5 {
+    text-align: left;
+    font-size: 1.2rem; /* Slightly smaller for a submenu feel */
+    line-height: 1.3;
+    font-weight: 600;
+    color: #333; /* Dark grey for better readability */
+    margin: 10px 0; /* Add some vertical margin */
+    text-decoration: underline; /* Underline the text */
+    text-decoration-style: solid; 
+}
+
+h6 {
+    margin: 0 auto; /* Center the h6 element */
+    text-align: center; /* Center the text inside the h6 */
+}
+
+
+.mainGUI {
+    user-select: none;
+    position: absolute;
+    top: 0%;
+    left: 0%;
+    z-index: 10;
+    width: 30%;
+    max-height: 80%;
+    overflow-y: auto;
+    background-color: grey;
+    padding: 1%;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.secondary-container {
+    display: flex;
+    flex-direction: row;
+    gap: 1%; /* Adds space between stacked elements */
+    padding: 2%;
+    background-color: transparent;
+    border-radius: 1%;
+    width: auto;
+    height: auto;
+  }
+
+.childui {
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 1%;
+    border-radius: 5px;
+    display: inline-flex;
+    flex-direction: column;
+    width: 30%;
+    height: auto;
+}
+
+.containerHorizontal {  
+    display: flex;  
+    flex-wrap: nowrap;  
+    justify-content: space-between;  
+  }
+.containerHorizontal input[type="text"] {
+    flex: 1; /* allows the input to grow and shrink */
+    min-width: 0; /* allows the input to shrink below its default size */
+    width: 100%; /* makes the input take up all available space */
+    box-sizing: border-box; /* includes padding and border in the element's total width and height */
+}
+.containerHorizontal label,
+.containerHorizontal button {
+    margin: 0; /* Removes any default margins */
+    padding: 0; /* Removes any default padding */
+    line-height: 1; /* Ensures consistent line height */
+}
+  
+.mainButton {
+    font-size: 1.2rem; /* Smaller font size for a more professional look */
+    color: #ffffff; /* White text color */
+    background-color: #007BFF; /* Solid blue background */
+    border-radius: 5px; /* Slightly rounded corners */
+    cursor: pointer; /* Pointer cursor on hover */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+}
+
+.secondary-button {
+    font-size: 1.2rem; /* Smaller font size for a more professional look */
+    color: #495057; /* Dark gray text color */
+    background-color: #e9ecef; /* Light gray background */
+    border-radius: 5px; /* Slightly rounded corners */
+    cursor: pointer; /* Pointer cursor on hover */
+    
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+    text-align: left;
+}
+  
+button {
+    padding: 1%;
+    font-size: 2%;
+    cursor: pointer;
+}
+
+select {
+    font-size: 16px;
+    margin-bottom: 20px;
+}
+
+
+.labelType1 {
+    display: inline-block; /* Allows padding and margin to apply */
+    font-size: 16px; /* Font size */
+    font-weight: normal; /* Normal weight for better readability */
+    font-family: 'Pacifico', cursive; /* Cursive font from Google Fonts */
+    border-radius: 5px; /* Slightly rounded corners */
+    color: #333; /* Dark gray color for text */
+    margin-bottom: 8px; /* Space below the label */
+    padding: 5px 10px; /* Padding around the text */
+}
